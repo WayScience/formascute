@@ -2,9 +2,9 @@
 
 A small, reproducible experiment comparing basic operation timing on two
 network-mounted storage systems used by this project: DBMI Isilon (SMB) and
-CURC PetaLibrary (sshfs). See `.agents/skills/isilon.md` and
-`.agents/skills/petalibrary.md` for what these systems are and how to mount
-them — this doc is just the benchmark methodology and results, kept separate
+CURC PetaLibrary (sshfs). See `.agents/skills/isilon/SKILL.md` and
+`.agents/skills/petalibrary/SKILL.md` for what these systems are and how to
+mount them — this doc is just the benchmark methodology and results, kept separate
 so the skills don't carry numbers that go stale.
 
 **Data handling:** results below are aggregate timings only. No real share

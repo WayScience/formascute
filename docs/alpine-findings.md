@@ -401,7 +401,7 @@ residual risk, but no longer the only one.
 ### CURC answered directly (2026-08-07): mostly good news, one new seasonal risk
 
 CURC's contact (Gregory Way) responded to the questions above. Full detail in
-`.agents/skills/alpine.md` under "CURC's Direct Answer"; summary:
+`.agents/skills/alpine/SKILL.md` under "CURC's Direct Answer"; summary:
 
 - **Institution fairshare confirmed and quantified**: AMC holds `6,459` of
   Alpine's priority shares (`~1,085,112` SU/week sustainable budget

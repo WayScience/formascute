@@ -108,7 +108,7 @@ check_repo() {
     "CODE_OF_CONDUCT.md"
     "CONTRIBUTING.md"
     "AGENTS.md"
-    ".agents/skills/alpine.md"
+    ".agents/skills/alpine/SKILL.md"
     ".markdownlint-cli2.yaml"
     "nextflow.config"
     "conf/alpine.reference.config"

@@ -1,3 +1,8 @@
+---
+name: alpine
+description: Use before changing, testing, or scaling formascute on CURC Alpine, especially for Nextflow, Slurm submission, Persistence1, Python runtimes, Apptainer/Singularity, uv environments, queue limits, or Alpine filesystem behavior.
+---
+
 # Alpine Skill
 
 Use this note before changing, testing, or scaling formascute on CURC Alpine,
@@ -7,7 +12,11 @@ environment behind the project's imaging/feature-extraction workload.
 ## Current Position
 
 - Submit and orchestrate through `Persistence1`; treat this as selected project
-  policy, not an open question.
+  policy for Nextflow and other long-lived workflow managers, not an open
+  question for that workflow shape.
+- For non-Nextflow, single-node Python tools, a plain Slurm batch job submitted
+  from the Alpine login node is acceptable. Do not introduce `Persistence1`
+  just to run one compute-node Python process.
 - Keep compute work on Slurm. `Persistence1` is for the long-lived workflow
   manager, not image processing or other heavy work.
 - Use `queueSize = 200` as the production default. It matches a real, hard
@@ -169,10 +178,11 @@ Nextflow-orchestrated container tasks.
 
 ## Slurm Defaults
 
-*Scope: `account`/`partition`/`QoS`/`submit host` are general Slurm settings —
-they apply to any job on Alpine, including a plain `sbatch` script with no
-Nextflow involved. `executor`, `queueSize`, and the submit throttle are
-Nextflow executor settings and only mean something when using Nextflow.*
+*Scope: `account`/`partition`/`QoS` are general Slurm settings — they apply to
+any job on Alpine, including a plain `sbatch` script with no Nextflow involved.
+`submit host`, `executor`, `queueSize`, and the submit throttle are Nextflow
+or workflow-manager settings and only mean something for that orchestration
+shape.*
 
 Use these defaults for CPU work unless the user or CURC gives a newer allocation
 policy:
@@ -180,7 +190,7 @@ policy:
 - account: project allocation supplied by the user
 - partition: `acpu`
 - QoS: `cpu-normal`
-- submit host: `Persistence1`
+- submit host: `Persistence1` *(Nextflow / workflow-manager orchestration only)*
 - executor: Slurm *(Nextflow only)*
 - production `queueSize`: `200` *(Nextflow only)*
 - production submit throttle: do not enable by default; see Queue And
@@ -891,6 +901,11 @@ blockers — there are no known blockers on the Apptainer side beyond the
 
 ### General (Alpine / Apptainer, Not Nextflow-Specific)
 
+- Do not let `$HOME` fill up. Alpine SSH/session setup can fail before a remote
+  command runs when home is `100%` full; observed failure text included
+  `sed: couldn't open temporary file /home/.../.ssh/sed...: No space left on
+  device`. Keep archives, virtual environments, caches, benchmark outputs, and
+  Parsl/Nextflow work directories on scratch or project storage, not home.
 - Do not rely on the base `Persistence1` Python environment for real
   production work — it lacks the project's required Python version and
   scientific dependencies.

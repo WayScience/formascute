@@ -1,10 +1,15 @@
+---
+name: petalibrary
+description: Use before mounting, transferring to or from, or reasoning about CU Boulder/Anschutz PetaLibrary storage from local machines or Alpine, including sshfs, Globus, rclone, quotas, access paths, and data-handling rules.
+---
+
 # PetaLibrary Skill
 
 Use this note before mounting, transferring to/from, or reasoning about quotas
 and access methods for CU Boulder/Anschutz's PetaLibrary storage service, as
-used from a local machine or from Alpine. See `.agents/skills/alpine.md` for
-general Alpine/SSH/Slurm knowledge — this file covers PetaLibrary specifically
-and cross-references that file rather than repeating it. For measured
+used from a local machine or from Alpine. See
+`.agents/skills/alpine/SKILL.md` for general Alpine/SSH/Slurm knowledge — this
+file covers PetaLibrary specifically and cross-references that file rather than repeating it. For measured
 performance numbers, see `docs/storage-mount-benchmark.md` and the
 reproducible script at `examples/benchmark_storage_mount.sh` — this skill
 intentionally does not carry exact benchmark figures itself, since they're
@@ -13,7 +18,7 @@ than trusting a number recorded here. It does carry a rough, order-of-
 magnitude expectation for off-campus-VPN vs. on-campus speed below, since
 that's useful for planning a transfer even without a fresh benchmark run.
 
-**Data handling rule, same as `.agents/skills/isilon.md`: never record real
+**Data handling rule, same as `.agents/skills/isilon/SKILL.md`: never record real
 allocation/directory names, file names, or directory listings from inside
 `/pl/active` (or any other PetaLibrary path) in this skill, in commit
 messages, or anywhere else committed to the repo.** Allocation subdirectory
