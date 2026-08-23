@@ -1,11 +1,16 @@
+---
+name: isilon
+description: Use before mounting, testing, transferring, or documenting CU Anschutz DBMI Isilon storage access, especially SMB mounts, local transfer behavior, data-handling rules, or Isilon-to-PetaLibrary movement.
+---
+
 # Isilon Skill
 
 Use this note before mounting, testing, or transferring data to/from CU
 Anschutz's DBMI Isilon storage from a local machine. See
-`.agents/skills/petalibrary.md` for the PetaLibrary side of an
-Isilon-to-PetaLibrary transfer, and `.agents/skills/alpine.md` for Alpine/HPC
-knowledge — this file covers Isilon specifically. For measured performance
-numbers, see `docs/storage-mount-benchmark.md` and the reproducible script at
+`.agents/skills/petalibrary/SKILL.md` for the PetaLibrary side of an
+Isilon-to-PetaLibrary transfer, and `.agents/skills/alpine/SKILL.md` for
+Alpine/HPC knowledge — this file covers Isilon specifically. For measured
+performance numbers, see `docs/storage-mount-benchmark.md` and the reproducible script at
 `examples/benchmark_storage_mount.sh` — this skill intentionally does not
 carry exact benchmark figures itself, since they're time/location/session-
 specific and go stale fast; re-run the script rather than trusting a number
