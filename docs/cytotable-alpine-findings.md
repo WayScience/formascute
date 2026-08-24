@@ -198,7 +198,7 @@ Other measured storage facts from this phase:
 - The scratch job-home DuckDB extension cache stayed at the same `~54 MB` seen
   in the tiny-fixture phase — it does not scale with dataset size.
 
-### Interpretation
+### Interpretation: Real-Scale S3 Benchmark
 
 1. **ThreadPoolExecutor is the only executor validated at real-plate scale.**
    The capped `HighThroughputExecutor` run OOM-killed under the identical
@@ -315,7 +315,7 @@ consistent with an `8G` request: `ceil(8/3.75)=3`). Two consequences:
   CPU footprint too — worth knowing before submitting many such jobs
   concurrently.
 
-### Interpretation
+### Interpretation: Larger-Scale Benchmark
 
 1. **The CPU-count finding from the small plate does not generalize — it
    inverts.** On `BR00126114` (`3.87 GB`), `4` CPUs beat `8` (`18m26s` vs
@@ -388,7 +388,7 @@ on the identical plate, and used `~20%` less memory (`35.01 GiB` vs
 run (same row/column counts, same parquet byte size), confirming this is a
 performance difference, not a correctness one.
 
-### Interpretation
+### Interpretation: HTEX Retest With Real Memory Headroom
 
 1. **The original "avoid HTEX" finding was a memory-starvation artifact, not
    an executor limitation.** Once HTEX had real headroom instead of a budget
