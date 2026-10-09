@@ -162,6 +162,9 @@ def main() -> int:
                 "url,number,title,state,isDraft,author,reviewRequests,headRefName,headRefOid,headRepository,baseRefName,mergeStateStatus,reviewDecision,files,statusCheckRollup,body",
             ]
         )
+        # A PR can close between the search snapshot and this detail fetch.
+        if details.get("state") != "OPEN":
+            continue
         review_requests = {item["login"].lower() for item in details.get("reviewRequests", [])}
         if user.lower() not in review_requests:
             continue

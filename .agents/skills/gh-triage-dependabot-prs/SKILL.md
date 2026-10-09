@@ -111,14 +111,19 @@ to inspect or report never authorizes reviews, pushes, or merges.
    source-change, and merge-conflict PRs untouched. Report the reason.
 8. For each candidate that passes the merge gate: record the exact head SHA
    and inspect changed files enough to confirm the PR is Dependabot
-   dependency maintenance; re-read the check rollup immediately before
-   mutation; approve with
+   dependency maintenance; re-read the PR `state` and the check rollup
+   immediately before mutation and proceed only if `state` is `OPEN`;
+   approve with
    `gh pr review <url> --approve --body "CI checks pass."`; merge with a
    merge commit — `gh pr merge <url> --merge --match-head-commit <sha>` — to
    avoid synthesized co-author trailers. Never use squash merge. If
    repository policy forbids merge commits, stop and report instead of
    silently choosing another method. Verify `state`, `mergedBy`, `mergedAt`,
-   and `mergeCommit` with `gh pr view`.
+   and `mergeCommit` with `gh pr view`, then inspect the resolved merge
+   commit with `gh api repos/<owner>/<repo>/commits/<mergeCommit>` and
+   confirm `.parents` has at least two entries and `.commit.message`
+   contains no `Co-authored-by:` trailers; merge status or `mergeCommit`
+   alone proves neither.
 9. Stuck mergeability: if `gh pr merge` fails with "Head branch is out of
    date" but `gh api repos/<owner>/<repo>/compare/<base>...<head>` reports
    `behind_by` 0 and the base branch is unprotected, the PR is stuck in
@@ -190,8 +195,11 @@ to inspect or report never authorizes reviews, pushes, or merges.
 ## Verification
 
 - For every merged PR, read back `state`, `mergedBy`, `mergedAt`, and
-  `mergeCommit` with `gh pr view` and confirm the merge method was a merge
-  commit with no co-author trailers.
+  `mergeCommit` with `gh pr view`, then inspect the resolved merge commit
+  with `gh api repos/<owner>/<repo>/commits/<mergeCommit>`: report that
+  `.parents` has at least two entries and that `.commit.message` contains
+  no `Co-authored-by:` trailers — merge status or `mergeCommit` alone is
+  not proof of either.
 - For every fixed-and-merged PR, confirm the final CI rollup is green on the
   exact pushed SHA.
 - Report per PR: URL, dependency scope, risk tier and (for majors) the
