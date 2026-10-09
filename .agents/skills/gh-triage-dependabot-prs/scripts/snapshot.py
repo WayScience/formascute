@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""Read-only snapshot of open Dependabot PRs requesting review from the current gh user."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from pathlib import PurePosixPath
+from typing import Any
+
+
+ALLOWED_CHECK_CONCLUSIONS = {"SUCCESS", "SKIPPED", "NEUTRAL"}
+DEPENDENCY_FILES = {
+    ".pre-commit-config.yaml",
+    "cargo.lock",
+    "cargo.toml",
+    "composer.json",
+    "composer.lock",
+    "gemfile",
+    "gemfile.lock",
+    "go.mod",
+    "go.sum",
+    "package-lock.json",
+    "package.json",
+    "pipfile",
+    "pipfile.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "pyproject.toml",
+    "requirements.txt",
+    "uv.lock",
+    "yarn.lock",
+}
+
+
+def gh_json(arguments: list[str]) -> Any:
+    completed = subprocess.run(
+        ["gh", *arguments],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return json.loads(completed.stdout)
+
+
+def is_dependency_file(path: str) -> bool:
+    name = PurePosixPath(path).name.lower()
+    return name in DEPENDENCY_FILES or name.startswith("requirements") and name.endswith(".txt")
+
+
+def classify_ci(checks: list[dict[str, Any]]) -> str:
+    if not checks:
+        return "no_checks"
+    runs = [check for check in checks if check.get("__typename") == "CheckRun"]
+    contexts = [check for check in checks if check.get("__typename") == "StatusContext"]
+    if len(runs) + len(contexts) != len(checks):
+        return "pending"
+    if any(
+        check.get("status") == "COMPLETED"
+        and check.get("conclusion") not in ALLOWED_CHECK_CONCLUSIONS
+        for check in runs
+    ) or any(check.get("state") in {"FAILURE", "ERROR"} for check in contexts):
+        return "failing"
+    if any(check.get("status") != "COMPLETED" for check in runs) or any(
+        check.get("state") != "SUCCESS" for check in contexts
+    ):
+        return "pending"
+    if not runs:
+        return "no_checks"
+    return "passing"
+
+
+def risk_hints(title: str, paths: list[str], body: str = "") -> list[str]:
+    hints: list[str] = []
+    lowered = [path.lower() for path in paths]
+    if any(path.startswith(".github/workflows/") for path in lowered):
+        hints.append("workflow_change")
+    if any(path.startswith(".github/dependabot") for path in lowered):
+        hints.append("dependabot_config_change")
+    if any(not is_dependency_file(path) for path in paths):
+        hints.append("non_dependency_file_change")
+    version_match = re.search(r"\bfrom\s+v?(\d+)(?:\.\d+)*\s+to\s+v?(\d+)(?:\.\d+)*\b", title, re.I)
+    if version_match and int(version_match.group(2)) > int(version_match.group(1)):
+        hints.append("possible_major_update")
+    if "group" in title.lower() or "updates" in title.lower():
+        hints.append("grouped_update_requires_inspection")
+    body_match = re.search(r"\|\s*\S+\s+\|\s*`?v?(\d+)(?:\.\d+)*`?\s+\|\s*`?v?(\d+)(?:\.\d+)*`?\s*\|", body or "")
+    if body_match and int(body_match.group(2)) > int(body_match.group(1)):
+        hints.append("possible_major_update_in_group")
+    return hints
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--limit", type=int, default=100)
+    parser.add_argument("--compact", action="store_true")
+    args = parser.parse_args()
+
+    user = gh_json(["api", "user"])["login"]
+    results = gh_json(
+        [
+            "search",
+            "prs",
+            "--review-requested",
+            user,
+            "--state",
+            "open",
+            "--limit",
+            str(args.limit),
+            "--json",
+            "number,title,url,repository,author,isDraft,updatedAt",
+        ]
+    )
+
+    candidates = []
+    for result in results:
+        if result.get("author", {}).get("login", "").lower() not in {"dependabot[bot]", "app/dependabot"}:
+            continue
+        details = gh_json(
+            [
+                "pr",
+                "view",
+                result["url"],
+                "--json",
+                "url,number,title,state,isDraft,author,reviewRequests,headRefName,headRefOid,headRepository,baseRefName,mergeStateStatus,reviewDecision,files,statusCheckRollup,body",
+            ]
+        )
+        review_requests = {item["login"].lower() for item in details.get("reviewRequests", [])}
+        if user.lower() not in review_requests:
+            continue
+        paths = [item["path"] for item in details.get("files", [])]
+        checks = details.get("statusCheckRollup") or []
+        candidates.append(
+            {
+                "url": details["url"],
+                "repository": result["repository"]["nameWithOwner"],
+                "number": details["number"],
+                "title": details["title"],
+                "head_sha": details["headRefOid"],
+                "head_branch": details["headRefName"],
+                "base_branch": details["baseRefName"],
+                "draft": details["isDraft"],
+                "merge_state": details["mergeStateStatus"],
+                "review_decision": details.get("reviewDecision"),
+                "review_requests": sorted(review_requests),
+                "ci": classify_ci(checks),
+                "risk_hints": risk_hints(details["title"], paths, details.get("body") or ""),
+                "changed_paths": paths,
+                "checks": [
+                    {
+                        "name": check.get("name") or check.get("context"),
+                        "type": check.get("__typename"),
+                        "status": check.get("status"),
+                        "conclusion": check.get("conclusion"),
+                        "state": check.get("state"),
+                        "workflow": check.get("workflowName"),
+                    }
+                    for check in checks
+                ],
+            }
+        )
+
+    indent = None if args.compact else 2
+    print(json.dumps({"user": user, "candidates": candidates}, indent=indent, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except subprocess.CalledProcessError as error:
+        print(error.stderr or str(error), file=sys.stderr)
+        raise SystemExit(error.returncode) from error
