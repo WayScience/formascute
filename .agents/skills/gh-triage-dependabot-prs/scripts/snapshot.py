@@ -52,24 +52,57 @@ def is_dependency_file(path: str) -> bool:
     return name in DEPENDENCY_FILES or name.startswith("requirements") and name.endswith(".txt")
 
 
-def classify_ci(checks: list[dict[str, Any]]) -> str:
+def fetch_check_runs(repository: str, head_sha: str) -> list[dict[str, Any]]:
+    """Read-only fetch of a commit's check runs with each run's owning app.
+
+    The pull request rollup omits which app created a check run, so query the
+    commit's check runs directly; ``app`` distinguishes GitHub Actions from
+    other check-reporting apps (for example CodeQL under "GitHub Advanced
+    Security"). Statuses are normalized to the uppercase spellings the rollup
+    uses. If the page truncates the result, a sentinel incomplete run keeps
+    the classification non-passing.
+    """
+    data = gh_json(
+        ["api", f"repos/{repository}/commits/{head_sha}/check-runs?per_page=100"]
+    )
+    runs: list[dict[str, Any]] = []
+    for run in data.get("check_runs", []):
+        runs.append(
+            {
+                "name": run.get("name"),
+                "app": (run.get("app") or {}).get("name"),
+                "status": (run.get("status") or "").upper() or None,
+                "conclusion": (run.get("conclusion") or "").upper() or None,
+            }
+        )
+    if data.get("total_count", 0) > len(runs):
+        runs.append({"name": None, "app": None, "status": "QUEUED", "conclusion": None})
+    return runs
+
+
+def classify_ci(checks: list[dict[str, Any]], check_runs: list[dict[str, Any]]) -> str:
+    """Classify CI state from the PR rollup and the head commit's check runs.
+
+    "passing" requires at least one completed run owned by the GitHub
+    Actions app; green check runs from other apps, or statuses alone,
+    classify as "no_checks" rather than "passing".
+    """
     if not checks:
         return "no_checks"
-    runs = [check for check in checks if check.get("__typename") == "CheckRun"]
     contexts = [check for check in checks if check.get("__typename") == "StatusContext"]
-    if len(runs) + len(contexts) != len(checks):
+    if len(check_runs) + len(contexts) != len(checks):
         return "pending"
     if any(
-        check.get("status") == "COMPLETED"
-        and check.get("conclusion") not in ALLOWED_CHECK_CONCLUSIONS
-        for check in runs
+        run.get("status") == "COMPLETED"
+        and run.get("conclusion") not in ALLOWED_CHECK_CONCLUSIONS
+        for run in check_runs
     ) or any(check.get("state") in {"FAILURE", "ERROR"} for check in contexts):
         return "failing"
-    if any(check.get("status") != "COMPLETED" for check in runs) or any(
+    if any(run.get("status") != "COMPLETED" for run in check_runs) or any(
         check.get("state") != "SUCCESS" for check in contexts
     ):
         return "pending"
-    if not runs:
+    if not any(run.get("app") == "GitHub Actions" for run in check_runs):
         return "no_checks"
     return "passing"
 
@@ -134,6 +167,10 @@ def main() -> int:
             continue
         paths = [item["path"] for item in details.get("files", [])]
         checks = details.get("statusCheckRollup") or []
+        check_runs = fetch_check_runs(
+            result["repository"]["nameWithOwner"], details["headRefOid"]
+        )
+        apps_by_name = {run["name"]: run["app"] for run in check_runs}
         candidates.append(
             {
                 "url": details["url"],
@@ -147,13 +184,16 @@ def main() -> int:
                 "merge_state": details["mergeStateStatus"],
                 "review_decision": details.get("reviewDecision"),
                 "review_requests": sorted(review_requests),
-                "ci": classify_ci(checks),
+                "ci": classify_ci(checks, check_runs),
                 "risk_hints": risk_hints(details["title"], paths, details.get("body") or ""),
                 "changed_paths": paths,
                 "checks": [
                     {
                         "name": check.get("name") or check.get("context"),
                         "type": check.get("__typename"),
+                        "app": apps_by_name.get(check.get("name"))
+                        if check.get("__typename") == "CheckRun"
+                        else None,
                         "status": check.get("status"),
                         "conclusion": check.get("conclusion"),
                         "state": check.get("state"),

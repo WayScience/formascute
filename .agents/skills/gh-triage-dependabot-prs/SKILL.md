@@ -80,17 +80,25 @@ to inspect or report never authorizes reviews, pushes, or merges.
 7. Approve or merge only when all of these are true (the merge gate):
    - The PR is not a draft and has at least one completed GitHub Actions CI
      check; an external-only status (for example CodeRabbit) does not satisfy
-     this requirement.
+     this requirement. Do not trust the snapshot's classification for this
+     condition: verify the source again immediately before approving or
+     merging with
+     `gh api repos/<owner>/<repo>/commits/<head-sha>/check-runs` and require
+     at least one completed, successful check run whose `app.name` is
+     "GitHub Actions"; check runs owned by other apps (for example CodeQL
+     under "GitHub Advanced Security") do not count.
    - Every check run is successful, skipped, or neutral, and every external
      status context is successful; no check is pending, action-required,
      cancelled, timed out, or failing. GitHub's `statusCheckRollup` uses
      `status`/`conclusion` for check runs but `state` for status contexts, so
      do not treat a context's absent `status` as pending.
    - The tested head SHA still equals the current head SHA.
-   - The authenticated user still has a pending review request on the PR, or
-     has already approved it — `gh pr review --approve` consumes the review
-     request, so a re-checked gate must accept a prior approval — and the PR
-     uses the Dependabot GitHub App identity.
+   - The authenticated user still has a pending review request on the PR, has
+     already approved it — `gh pr review --approve` consumes the review
+     request, so a re-checked gate must accept a prior approval — or the user
+     explicitly named and directed this PR for processing in the current
+     session and that authorization is recorded; and the PR uses the
+     Dependabot GitHub App identity.
    - The changed files are consistent with Dependabot dependency maintenance,
      including manifests, lockfiles, hook configuration, GitHub Actions
      workflow/action version bumps, or Dependabot-managed grouped updates.
