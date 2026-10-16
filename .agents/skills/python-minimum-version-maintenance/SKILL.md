@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [python, packaging, maintenance, compatibility]
-    related_skills: []
+    related_skills: [python-latest-version-maintenance]
 ---
 
 # Python Minimum Version Maintenance
@@ -20,6 +20,28 @@ Audit Python packages maintained by the specified person or team and, where just
 - Asked to review one or more Python packages maintained by a specified person or team, or by the current user when no maintainer is specified.
 - Asked to update a package's minimum Python version and associated CI/docs/configuration.
 - Don't use for blanket dependency upgrades or unrelated modernization.
+
+## Paired Range Review
+
+Read `python-latest-version-maintenance` once per run before choosing or
+changing Python bounds. Review its latest-version policy alongside this skill's
+minimum-version policy; do not recursively invoke the companion workflow.
+
+- Record the complete declared range, intended minimum, newest supported/tested
+  stable version, and any upper bound or exclusions. Check exact interpreter
+  membership with project tooling or `packaging.specifiers.SpecifierSet`, not
+  string ordering. A latest CI job is not proof of a valid support range.
+- Reconcile metadata, classifiers, CI, docs, lockfiles, and dependency markers.
+  Check published dependency `Requires-Python` and installation viability at both
+  ends; a dependency update for newer Python must not silently break the minimum.
+- Directly exercise the retained/proposed minimum and newest version being
+  claimed. Preserve existing intermediate-version CI jobs and report missing
+  endpoint or platform evidence instead of claiming the whole range verified.
+- Cross-review does not authorize extra changes. Flag an obsolete minimum or
+  stale upper bound separately when outside the requested scope; do not raise
+  the floor, widen/add an upper bound, or drop compatibility without permission
+  and verification. Finish with a consistent, non-empty declared range and
+  explicit evidence for its tested endpoints.
 
 ## Procedure
 
