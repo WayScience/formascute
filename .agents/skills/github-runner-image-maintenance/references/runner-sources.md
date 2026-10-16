@@ -81,6 +81,14 @@ allow arbitrary unknown labels or suppress all runner-label diagnostics.
 - Check action/runtime and wheel availability for both the package's minimum
   and newest tested runtime on the target architecture. Do not infer ARM support
   from an x64 wheel, or successful installation from a resolver-only result.
+- Compare temporary-storage mounts and quotas, not just total VM disk size.
+  In the October 16 pilot, Ubuntu 26.04 used a roughly 8 GB quota-limited tmpfs
+  for `/tmp`, while the job temp directory was on an ext4 disk with about 88 GB
+  free. Ubuntu 24.04 used the disk for both. The unchanged large-data test wrote
+  beneath `/tmp` and hit `Errno 122`; a larger paid runner was not the first
+  remedy. Diagnose with `df`/`findmnt`, then scope `TMPDIR` to a measured,
+  disk-backed directory for the affected test step and rerun the complete test.
+  Refresh these measurements rather than hardcoding capacities as guarantees.
 - Check hook-specific runtime declarations as well as the package test matrix.
   A lint job that sets up Python 3.11 can still require Python 3.12 through
   pre-commit's `default_language_version`. A newer OS image may no longer supply

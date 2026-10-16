@@ -115,6 +115,12 @@ A source manifest or a GitHub Release alone is not proof of a registry package.
    minimum and newest tested language versions, action architecture support,
    dependency wheels, native libraries, browser/GPU/headless setup, Xcode/SDKs,
    signing, containers, shell behavior, caches, and hardcoded install paths.
+   For data-heavy jobs, measure free space, inodes, mount types, and quotas for
+   `/tmp`, the job temp directory, and workspace on the actual target image.
+   A memory-backed `/tmp` can exhaust its quota while the regular disk is free.
+   Use a small hosted probe when documentation is insufficient; only then scope
+   an appropriate temporary-directory override to the affected step. Do not skip
+   the large-data test, disable quotas, or assume a paid runner is necessary.
    Compare old/new included software; explicitly provision required tools rather
    than relying on an image's incidental defaults. Inspect pre-commit's
    `default_language_version` and per-hook `language_version` separately from
