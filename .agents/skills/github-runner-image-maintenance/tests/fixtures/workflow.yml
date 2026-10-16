@@ -1,0 +1,31 @@
+on: [push]
+jobs:
+  scalar:
+    runs-on: macos-14
+  matrix:
+    strategy:
+      matrix:
+        runner: [ubuntu-24.04, macos-14]
+        py: ['3.11', '3.12']
+        exclude:
+          - runner: ubuntu-24.04
+        include:
+          - runner: macos-26
+            py: '3.13'
+    runs-on: ${{ matrix.runner }}
+  mixed:
+    runs-on: [self-hosted, linux, ubuntu-24.04]
+  constrained:
+    runs-on: [ubuntu-24.04, gpu]
+  group:
+    runs-on:
+      group: private
+      labels: ubuntu-24.04
+  dynamic:
+    runs-on: ${{ inputs.runner }}
+  reuse:
+    uses: org/repo/.github/workflows/run.yml@main
+  local:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: ./.github/actions/install
