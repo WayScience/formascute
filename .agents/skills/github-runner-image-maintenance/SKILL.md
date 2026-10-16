@@ -116,7 +116,13 @@ A source manifest or a GitHub Release alone is not proof of a registry package.
    dependency wheels, native libraries, browser/GPU/headless setup, Xcode/SDKs,
    signing, containers, shell behavior, caches, and hardcoded install paths.
    Compare old/new included software; explicitly provision required tools rather
-   than relying on an image's incidental defaults. For Python, read both
+   than relying on an image's incidental defaults. Inspect pre-commit's
+   `default_language_version` and per-hook `language_version` separately from
+   the package test matrix. Ensure the lint job explicitly installs those
+   interpreters before hooks run; a local installation or warm cache can hide
+   a missing runtime on the new image. Align tool setup with the existing hook
+   requirement rather than downgrading hooks or raising the package minimum.
+   For Python, read both
    `python-minimum-version-maintenance` and `python-latest-version-maintenance`
    once to review the whole supported range. A runner change does not authorize
    raising the Python floor or dropping an existing OS/architecture test job.
@@ -130,9 +136,9 @@ A source manifest or a GitHub Release alone is not proof of a registry package.
    not from another package upgrade PR. Check existing PRs for duplicates and
    avoid overwriting uncommitted work. Make the narrow runner/related selector
    edits with `patch`; preserve triggers, permissions, secrets, release guards,
-   dependencies, Python versions, and test assertions. Do not globally replace
-   matching strings or retrofit archival docs. Run a dry-run/diff inspection
-   before staging and account for every changed file.
+   dependencies, supported/test Python versions, and test assertions. Do not
+   globally replace matching strings or retrofit archival docs. Run a dry-run/diff
+   inspection before staging and account for every changed file.
    Completion: a small diff changes only intended runner selection and necessary
    compatibility setup, with unrelated work untouched.
 7. Run configured workflow/YAML/action lint and relevant local package checks.

@@ -81,6 +81,12 @@ allow arbitrary unknown labels or suppress all runner-label diagnostics.
 - Check action/runtime and wheel availability for both the package's minimum
   and newest tested runtime on the target architecture. Do not infer ARM support
   from an x64 wheel, or successful installation from a resolver-only result.
+- Check hook-specific runtime declarations as well as the package test matrix.
+  A lint job that sets up Python 3.11 can still require Python 3.12 through
+  pre-commit's `default_language_version`. A newer OS image may no longer supply
+  the latter on PATH. Explicitly install the configured hook runtime; preserve
+  the package's minimum and matrix. Verify on the hosted image, not just a local
+  machine that already happens to have both interpreters installed.
 - Preserve Intel/ARM and standard/larger classes by default. A larger-runner
   label may require organization configuration and paid access even when the
   image itself is GA; ask before changing cost or resource class.
