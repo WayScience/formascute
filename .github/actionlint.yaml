@@ -1,0 +1,7 @@
+# actionlint 1.7.12 does not yet recognize this GitHub-hosted GA image.
+# GA evidence: https://github.com/actions/runner-images/issues/14747
+# This validation-only allowlist does not select a self-hosted runner.
+# Remove the entry when actionlint's built-in catalog includes Ubuntu 26.04.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
