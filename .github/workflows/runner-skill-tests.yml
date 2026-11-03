@@ -1,0 +1,47 @@
+---
+name: runner skill tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .agents/skills/github-runner-image-maintenance/**
+      - .github/workflows/runner-skill-tests.yml
+  push:
+    branches: [main]
+    paths:
+      - .agents/skills/github-runner-image-maintenance/**
+      - .github/workflows/runner-skill-tests.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Audit helper (${{ matrix.os }}, Python ${{ matrix.python }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26]
+        python: ["3.11", "3.15"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install test dependency
+        run: python -m pip install "PyYAML==6.0.3"
+      - name: Record interpreter and platform
+        run: python -c "import platform, sys; print(sys.version); print(platform.platform(), platform.machine())"
+      - name: Run deterministic tests
+        run: >-
+          python -m unittest discover
+          -s .agents/skills/github-runner-image-maintenance/tests -v
+      - name: Check CLI entry point
+        run: python .agents/skills/github-runner-image-maintenance/scripts/audit.py --help
