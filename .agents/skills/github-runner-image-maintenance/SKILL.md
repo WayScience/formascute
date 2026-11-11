@@ -40,10 +40,15 @@ lint check are three different pieces of evidence; none proves hosted CI passed.
   makes stray clones harder to spot. A scratch clone found nested under this
   repo is not "another repo near this one" to also audit or update; it is
   leftover scratch from a prior run. If one is found outside `.scratch/`
-  (loose at the project root), confirm nothing is unpushed (`git status
-  --short`, `git rev-list --count HEAD...@{upstream}`), then delete it rather
-  than inventorying, editing, or reporting on it. The `.gitignore` entry for
-  `.scratch/` is a backstop, not a substitute for using that root up front.
+  (loose at the project root), `git status --short` and `git rev-list --count
+  HEAD...@{upstream}` only rule out uncommitted/unpushed changes on the
+  *current* branch — they miss other local branches with unpushed commits,
+  stashes, and ignored files. Those checks alone do not authorize deletion.
+  Move the clone intact into `.scratch/` instead, or get the owner to confirm
+  deletion explicitly; only delete outright when the owner has confirmed it.
+  Either way, do not inventory, edit, or report on it as project work. The
+  `.gitignore` entry for `.scratch/` is a backstop, not a substitute for
+  using that root up front.
 - Python 3.11+ and `uv` for the read-only helper's declared PyYAML dependency.
   The helper reads registry/GitHub APIs; it never clones, edits, commits, pushes,
   creates PRs, or dispatches workflows. An explicit `--output` writes a local
@@ -150,15 +155,27 @@ A source manifest or a GitHub Release alone is not proof of a registry package.
    use `latest`, preview, fewer tests, or a different architecture to get green.
    Completion: the candidate preserves support promises or has an explicit blocker.
 6. Before branching, search this repo for a pre-existing PR that already covers
-   the same runner-image update, so the audit never produces a duplicate. Check
-   `gh pr list --repo OWNER/REPO --state all --search "runner images in:title"`
+   the same runner-image update, so the audit never produces a duplicate. Use
+   `--repo OWNER/REPO` explicitly on every search below (never rely on the
+   current directory or `GH_REPO`) and `--limit` large enough to get complete
+   results, or paginate — `gh pr list` defaults to 30 results and a true match
+   can sit beyond that. Check
+   `gh pr list --repo OWNER/REPO --state all --limit 200 --search "runner images in:title"`
    (and the project's own prior branch-name convention, e.g. `ci-update-runner-*`)
-   plus `gh pr list --state all --search "<deprecated-label> in:body"` for the
-   exact label being retired. For each hit, open it and diff its changed files
-   against the workflow paths this run would touch, not just the title:
-   - An OPEN PR already touching the same files means the work is in flight.
-     Do not open a second one; report the existing URL, state (draft/ready,
-     review/CI status), and skip to the next repo.
+   plus `gh pr list --repo OWNER/REPO --state all --limit 200 --search "<deprecated-label> in:body"`
+   for the exact label being retired. For each hit, open it and diff its
+   changed files against the workflow paths this run would touch, not just
+   the title — then compare the actual runner selectors and replacements it
+   makes, not just file overlap: a PR can touch the same workflow file for an
+   unrelated bump (e.g. an Ubuntu version) while leaving this run's actual
+   target (e.g. a retired macOS label) untouched, and file overlap alone must
+   not cause skipping that still-uncovered work:
+   - An OPEN PR that already makes the same selector change (same deprecated
+     label(s) being replaced) means the work is in flight. Do not open a
+     second one; report the existing URL, state (draft/ready, review/CI
+     status), and skip to the next repo. An open PR that touches the file but
+     a different selector is not coverage; proceed with the uncovered change
+     and still note the open PR in the report.
    - A MERGED PR touching the same files means re-fetch the default branch
      (step 3's SHA pin may be stale) and re-run the inventory before deciding
      this repo still needs a change; a newly-stale label discovered after that
