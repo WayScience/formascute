@@ -223,3 +223,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Scratch clones of OTHER repos (e.g. from the github-runner-image-maintenance
+# skill) belong under the single project-local scratch root below, never
+# loose at the repo root under their own name — repo names change every run,
+# a fixed root doesn't.
+/.scratch/

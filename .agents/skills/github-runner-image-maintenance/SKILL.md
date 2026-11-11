@@ -32,6 +32,18 @@ lint check are three different pieces of evidence; none proves hosted CI passed.
 - Authenticated GitHub CLI: check with `terminal(command="gh auth status")`.
   Workflow pushes require a credential authorized to change workflow files.
   Never print tokens or change permissions to get around a rejected push.
+- Clone each target repo under this project's own `.scratch/` directory (e.g.
+  `.scratch/<repo-name>`), which is gitignored as a single fixed root — never
+  as a loose, repo-named directory at this project's top level. The OS
+  scratch/temp directory (`$TMPDIR`, `/tmp`) works too if a run is already
+  working from there; pick one root and stay consistent, since mixing both
+  makes stray clones harder to spot. A scratch clone found nested under this
+  repo is not "another repo near this one" to also audit or update; it is
+  leftover scratch from a prior run. If one is found outside `.scratch/`
+  (loose at the project root), confirm nothing is unpushed (`git status
+  --short`, `git rev-list --count HEAD...@{upstream}`), then delete it rather
+  than inventorying, editing, or reporting on it. The `.gitignore` entry for
+  `.scratch/` is a backstop, not a substitute for using that root up front.
 - Python 3.11+ and `uv` for the read-only helper's declared PyYAML dependency.
   The helper reads registry/GitHub APIs; it never clones, edits, commits, pushes,
   creates PRs, or dispatches workflows. An explicit `--output` writes a local
@@ -137,16 +149,41 @@ A source manifest or a GitHub Release alone is not proof of a registry package.
    and propose an explicit, non-deprecated fallback with evidence; never silently
    use `latest`, preview, fewer tests, or a different architecture to get green.
    Completion: the candidate preserves support promises or has an explicit blocker.
-6. For approved repos, inspect status/remotes/guidance and fetch the current
-   upstream default branch. Create a fresh, non-tracking branch from that base,
-   not from another package upgrade PR. Check existing PRs for duplicates and
-   avoid overwriting uncommitted work. Make the narrow runner/related selector
-   edits with `patch`; preserve triggers, permissions, secrets, release guards,
-   dependencies, supported/test Python versions, and test assertions. Do not
-   globally replace matching strings or retrofit archival docs. Run a dry-run/diff
-   inspection before staging and account for every changed file.
-   Completion: a small diff changes only intended runner selection and necessary
-   compatibility setup, with unrelated work untouched.
+6. Before branching, search this repo for a pre-existing PR that already covers
+   the same runner-image update, so the audit never produces a duplicate. Check
+   `gh pr list --repo OWNER/REPO --state all --search "runner images in:title"`
+   (and the project's own prior branch-name convention, e.g. `ci-update-runner-*`)
+   plus `gh pr list --state all --search "<deprecated-label> in:body"` for the
+   exact label being retired. For each hit, open it and diff its changed files
+   against the workflow paths this run would touch, not just the title:
+   - An OPEN PR already touching the same files means the work is in flight.
+     Do not open a second one; report the existing URL, state (draft/ready,
+     review/CI status), and skip to the next repo.
+   - A MERGED PR touching the same files means re-fetch the default branch
+     (step 3's SHA pin may be stale) and re-run the inventory before deciding
+     this repo still needs a change; a newly-stale label discovered after that
+     merge is a new, separate finding, not evidence the old PR missed something.
+   - A CLOSED-unmerged PR is not cover: record why it was abandoned (superseded,
+     rejected approach, stale) and proceed, but do not silently repeat a rejected
+     approach without addressing the stated objection.
+   - Also check for a bot-authored PR (Dependabot, Renovate, a scheduled workflow)
+     already proposing the same runner bump; treat it the same as a human PR.
+   Record what was searched and found (or found none) before creating anything.
+   For approved repos with no existing coverage, inspect status/remotes/guidance
+   and fetch the current upstream default branch. Clone under the scratch
+   root from Prerequisites (`.scratch/<repo-name>` or the OS temp dir), never
+   as a loose directory at this project's top level; create a
+   fresh, non-tracking branch from that base, not from another package upgrade
+   PR, and avoid overwriting uncommitted work. Make the narrow runner/related
+   selector edits with `patch`; preserve triggers, permissions, secrets,
+   release guards, dependencies, supported/test Python versions, and test
+   assertions. Do not globally replace matching strings or retrofit archival
+   docs. Run a dry-run/diff inspection before staging and account for every
+   changed file.
+   Completion: a duplicate-PR search was performed and recorded for every repo;
+   a small diff changes only intended runner selection and necessary
+   compatibility setup, with unrelated work untouched, in repos with no existing
+   coverage.
 7. Run configured workflow/YAML/action lint and relevant local package checks.
    Exercise the supported minimum and newest tested runtime locally where
    available, plus build/installed-artifact smoke paths when image tools affect
@@ -191,12 +228,17 @@ A source manifest or a GitHub Release alone is not proof of a registry package.
   contradictory brownout intervals rather than silently correcting their dates.
 - Draft PRs can be skipped by project policy or need fork approval. Never call
   zero check runs, external-only statuses, or a skipped matrix green validation.
+- A repo can already have an open, merged, or rejected PR for the exact same
+  runner bump (human, bot, or an earlier run of this same skill). Search by
+  title, branch-name pattern, and body label text, and diff changed files,
+  before creating a new branch; a title-only check misses renamed/rebranded PRs.
 
 ## Verification
 
 Every scoped repo has a published-package eligibility decision, a complete runner
 inventory or explicit gaps, current official evidence, and a no-change/proposed/
-blocked result. Every published change has a read-back-verified draft PR and an
-honest hosted-CI outcome. Skill tests and a live read-only audit must run before
-calling the helper verified; they do not establish that package runner upgrades
-passed hosted CI.
+blocked result. Every repo also has a recorded duplicate-PR search (found-none,
+or the existing PR's URL/state) before any branch was created. Every published
+change has a read-back-verified draft PR and an honest hosted-CI outcome. Skill
+tests and a live read-only audit must run before calling the helper verified;
+they do not establish that package runner upgrades passed hosted CI.
